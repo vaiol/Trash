@@ -1,4 +1,4 @@
-package com.kpi.vaiol;
+package com.kpi.vaiol.filters;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -6,7 +6,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class BakFileFilter implements FilenameFilter {
-    @Override
+
     public boolean accept(File dir, String name) {
         return itFits(name);
     }
