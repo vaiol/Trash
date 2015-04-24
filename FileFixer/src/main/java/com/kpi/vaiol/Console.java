@@ -1,12 +1,7 @@
 package com.kpi.vaiol;
 
 import javax.swing.*;
-import javax.swing.text.DefaultCaret;
 import java.awt.event.*;
-import java.io.*;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.Timer;
 
@@ -18,32 +13,28 @@ public class Console {
     private JTextField textField1;
     private JTextField textField2;
     private JButton STARTButton;
+    private JProgressBar progressBar1;
+    private JCheckBox allFilesCheckBox;
+    private JCheckBox cleanLogSCheckBox;
+    private JCheckBox fixAllDirSCheckBox;
     private JCheckBox cleanFilesCheckBox;
 
     private Thread fixerThread;
     private Timer checkTimer;
 
     public Console() {
-        if(new File("cid.txt").exists()) {
-            java.util.List<String> lines = new ArrayList<String>();
-            try {
-                lines = Files.readAllLines(Paths.get("cid.txt"), Charset.defaultCharset());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            setTextFields(lines.get(0), lines.get(1));
-        } else {
-            setTextFields("", "");
-        }
-
         STARTButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 if (fixerThread == null || fixerThread.getState() == Thread.State.TERMINATED) {
                     textArea1.setText("");
-                    fixerThread = new Thread(new Fixer());
+                    fixerThread = new Thread(new MainFixerThread());
                     fixerThread.start();
                     STARTButton.setText("WAIT");
                     STARTButton.setEnabled(false);
+                    allFilesCheckBox.setEnabled(false);
+                    fixAllDirSCheckBox.setEnabled(false);
+                    cleanFilesCheckBox.setEnabled(false);
+                    cleanLogSCheckBox.setEnabled(false);
                     checkTimer = new Timer(true);
                     checkTimer.scheduleAtFixedRate(new CheckTask(), 0, 50);
                 }
@@ -51,19 +42,35 @@ public class Console {
         });
     }
 
-    public void out(String str) {
+    public void println(String str) {
         textArea1.append(str + "\n");
         textArea1.setCaretPosition(textArea1.getDocument().getLength());
+        System.out.println(str);
     }
 
     public void setTextFields(String num1, String num2) {
-
         textField2.setText(num1);
         textField1.setText(num2);
     }
 
-    public boolean getClean() {
+    public void setProgress(int value) {
+        progressBar1.setValue(value);
+    }
+
+    public boolean isFixAllFiles() {
+        return allFilesCheckBox.isSelected();
+    }
+
+    public boolean isCleanTrash() {
         return cleanFilesCheckBox.isSelected();
+    }
+
+    public boolean isCleanLogS() {
+        return cleanLogSCheckBox.isSelected();
+    }
+
+    public boolean isFixAllDirS() {
+        return fixAllDirSCheckBox.isSelected();
     }
 
     public String getTextField2() {
@@ -84,10 +91,19 @@ public class Console {
             if (fixerThread != null && fixerThread.getState() != Thread.State.TERMINATED) {
                 STARTButton.setText("WAIT");
                 STARTButton.setEnabled(false);
+                allFilesCheckBox.setEnabled(false);
+                fixAllDirSCheckBox.setEnabled(false);
+                cleanFilesCheckBox.setEnabled(false);
+                cleanLogSCheckBox.setEnabled(false);
             } else {
                 STARTButton.setText("START");
                 STARTButton.setEnabled(true);
+                allFilesCheckBox.setEnabled(true);
+                fixAllDirSCheckBox.setEnabled(true);
+                cleanFilesCheckBox.setEnabled(true);
+                cleanLogSCheckBox.setEnabled(true);
                 checkTimer.cancel();
+                setProgress(0);
             }
         }
     }

@@ -1,85 +1,151 @@
 package com.kpi.vaiol;
 
-
-import com.kpi.vaiol.filters.BakFileFilter;
-import com.kpi.vaiol.filters.NecessaryFileFilter;
-
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
-public class Fixer implements Runnable {
+public class Fixer {
 
-    private static final String FIXER = "fixer.exe";
-    private static LoadFixer fixerLoader;
+    private final static String FIX_JAR = "fix.jar";
+    private final static String FIXER = "fixer.exe";
+    private final static String FIXER_3D = "fixer3d.exe";
+    private final static String CID = "cid.txt";
+    private final static String SLASH = "\\";
+    private final static int BUFFER_SIZE = 1024;
 
-    public static void cidCreate() {
-        if( ! new File("cid.txt").exists()) {
+
+    private String path;
+    private File outFixer;
+    private File errFixer;
+    private File comFixer;
+    private File outFixer3D;
+    private File errFixer3D;
+    private File comFixer3D;
+    private File outFixJar;
+    private File errFixJar;
+    private File comFixJar;
+    private File fixer;
+    private File fixJar;
+    private File fixer3D;
+
+    public Fixer(String path) {
+        this.path = path + SLASH;
+    }
+
+    private File createFile(String name) {
+        File nFile = new File(path + name);
+        if (!nFile.exists()) {
             try {
-                new File("cid.txt").createNewFile();
-            } catch (IOException ioe) {
-                ioe.printStackTrace();
-            }
-            String result = "";
-            result += Main.getConsole().getTextField1() + "\n";
-            result += Main.getConsole().getTextField1();
-            try {
-                Files.write(Paths.get("cid.txt"), result.getBytes());
+                nFile.createNewFile();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+        return nFile;
     }
 
-    public static void getFix() {
-
-        String path = Paths.get("").toAbsolutePath().toString();
-        File[] files = new File(path).listFiles(new NecessaryFileFilter());
-        ExecutorService service = Executors.newFixedThreadPool(4);
-        for (File file : files) {
-            service.execute(new FixThread(FIXER, file));
+    private File createFixerFile(String name) {
+        InputStream is = null;
+        try {
+            is = getClass().getClassLoader().getResource(name).openStream();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (NullPointerException nex) {
+            nex.printStackTrace();
         }
-        service.shutdown();
-        while ( ! service.isTerminated()) {
+
+        File fixer = new File(path + name);
+        if (!fixer.exists()) {
+            try {
+                fixer.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            copy(is, fixer);
+        }
+        return fixer;
+    }
+
+    public void load() {
+        outFixer = createFile("OutFixer.txt");
+        errFixer = createFile("ErrFixer.txt");
+        comFixer = createFile("ComFixer.txt");
+        outFixer3D = createFile("OutFixer3D.txt");
+        errFixer3D = createFile("ErrFixer3D.txt");
+        comFixer3D = createFile("ComFixer3D.txt");
+        outFixJar = createFile("OutFixJar.txt");
+        errFixJar = createFile("ErrFixJar.txt");
+        comFixJar = createFile("ComFixJar.txt");
+        fixer = createFixerFile(FIXER);
+        fixer3D = createFixerFile(FIXER_3D);
+        fixJar = createFixerFile(FIX_JAR);
+
+
+
+        try {
+            Files.copy(new File(CID).toPath(), new File(path + CID).toPath());
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
-    private static void cleanFiles() {
+    public boolean deleteLogs() {
+        boolean isDeleted;
+        isDeleted = outFixer.delete();
+        isDeleted = isDeleted && errFixer.delete();
+        isDeleted = isDeleted && comFixer.delete();
+        isDeleted = isDeleted && outFixer3D.delete();
+        isDeleted = isDeleted && errFixer3D.delete();
+        isDeleted = isDeleted && comFixer3D.delete();
+        isDeleted = isDeleted && outFixJar.delete();
+        isDeleted = isDeleted && errFixJar.delete();
+        isDeleted = isDeleted && comFixJar.delete();
+        return isDeleted;
+    }
 
-        long date = System.currentTimeMillis();
-        String path = Paths.get("").toAbsolutePath().toString();
-        File[] files1 = new File(path).listFiles(new BakFileFilter());
+    public boolean deleteExecs(){
+        boolean isDeleted;
+        isDeleted = new File(path + CID).delete();
+        isDeleted = isDeleted && fixJar.delete();
+        isDeleted = isDeleted && fixer.delete();
+        isDeleted = isDeleted && fixer3D.delete();
+        try {
+            Files.delete(Paths.get(fixJar.getAbsolutePath()));
+            Files.delete(Paths.get(fixer.getAbsolutePath()));
+            Files.delete(Paths.get(fixer3D.getAbsolutePath()));
+        } catch (IOException e) {
+        }
+        return isDeleted;
+    }
 
-        for (File file : files1) {
-            if(file.isFile()) {
-                Main.getConsole().out("DEL: " + file.getName());
-                file.delete();
+    private static void copy(InputStream is, File dest) {
+        OutputStream os = null;
+        try {
+            os = new FileOutputStream(dest);
+            byte[] buffer = new byte[BUFFER_SIZE];
+            int length;
+            while ((length = is.read(buffer)) > 0) {
+                os.write(buffer, 0, length);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (is != null) {
+                try {
+                    is.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (os != null) {
+                try {
+                    os.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
-
-        while ( ! fixerLoader.delete()) {
-            if (System.currentTimeMillis() - date > 3000) {
-                break;
-            }
-        }
     }
 
-    public void run() {
-        long dateBefore = System.currentTimeMillis();
-        cidCreate();
-        fixerLoader = new LoadFixer("fixer.exe");
-        fixerLoader.load();
-        getFix();
-        long dateAfter = System.currentTimeMillis();
 
-        Main.getConsole().out("");
-        if (Main.getConsole().getClean()) {
-            cleanFiles();
-        }
-        Main.getConsole().out("FixTime: " + ((dateAfter - dateBefore) / 1000.0) + " sec.");
-
-    }
 }
